@@ -8,32 +8,37 @@
 // ── DOM refs ──────────────────────────────────────────────────
 const requestQueueInput = document.getElementById('request-queue');
 const headPositionInput = document.getElementById('head-position');
-const diskSizeInput     = document.getElementById('disk-size');
-const algorithmSelect   = document.getElementById('algorithm-select');
-const speedSlider       = document.getElementById('speed-slider');
-const runBtn            = document.getElementById('run-btn');
-const resetBtn          = document.getElementById('reset-btn');
-const errorBox          = document.getElementById('error-box');
-const diskSizeGroup     = document.getElementById('disk-size-group');
-const directionGroup    = document.getElementById('direction-group');
-const algoInfoBody      = document.getElementById('algo-info-body');
+const diskSizeInput = document.getElementById('disk-size');
+const algorithmSelect = document.getElementById('algorithm-select');
+const speedSlider = document.getElementById('speed-slider');
+const runBtn = document.getElementById('run-btn');
+const resetBtn = document.getElementById('reset-btn');
+const errorBox = document.getElementById('error-box');
+const diskSizeGroup = document.getElementById('disk-size-group');
+const directionGroup = document.getElementById('direction-group');
+const algoInfoBody = document.getElementById('algo-info-body');
 const canvasPlaceholder = document.getElementById('canvas-placeholder');
-const simStatus         = document.getElementById('sim-status');
-const movementTicker    = document.getElementById('movement-ticker');
-const tickerText        = document.getElementById('ticker-text');
-const seekLive          = document.getElementById('seek-live');
-const resultsPanel      = document.getElementById('results-panel');
-const resAlgoName       = document.getElementById('res-algo-name');
-const resSeekTime       = document.getElementById('res-seek-time');
-const resReqCount       = document.getElementById('res-req-count');
-const execSequence      = document.getElementById('exec-sequence');
-const comparisonTbody   = document.getElementById('comparison-tbody');
-const canvas            = document.getElementById('disk-canvas');
-const ctx               = canvas.getContext('2d');
+const simStatus = document.getElementById('sim-status');
+const movementTicker = document.getElementById('movement-ticker');
+const tickerText = document.getElementById('ticker-text');
+const seekLive = document.getElementById('seek-live');
+const resultsPanel = document.getElementById('results-panel');
+const resAlgoName = document.getElementById('res-algo-name');
+const resSeekTime = document.getElementById('res-seek-time');
+const resReqCount = document.getElementById('res-req-count');
+const execSequence = document.getElementById('exec-sequence');
+const comparisonTbody = document.getElementById('comparison-tbody');
+const canvas = document.getElementById('disk-canvas');
+const ctx = canvas.getContext('2d');
+const highlightCanvas = document.getElementById('highlight-canvas');
+const hCtx = highlightCanvas.getContext('2d');
+const tooltipEl = document.getElementById('graph-tooltip');
 
 // ── State ─────────────────────────────────────────────────────
 let comparisonData = {};   // { fcfs: {name, seek}, sstf: {...}, ... }
 let animationRunning = false;
+let drawnPoints = [];   // [{x, y, cylinder, step, fromCyl, toCyl}]
+let hitArea = null; // dynamic div for mouse/touch
 
 // ── Algorithm Metadata ────────────────────────────────────────
 const ALGO_INFO = {
@@ -139,7 +144,7 @@ function renderAlgoInfo(algoKey) {
 
 // ── Dynamic UI Visibility ─────────────────────────────────────
 function updateUIVisibility(algoKey) {
-  const showDiskSize  = ['scan', 'cscan'].includes(algoKey);
+  const showDiskSize = ['scan', 'cscan'].includes(algoKey);
   const showDirection = ['scan', 'cscan', 'look'].includes(algoKey);
 
   diskSizeGroup.classList.toggle('hidden', !showDiskSize);
@@ -148,14 +153,14 @@ function updateUIVisibility(algoKey) {
 
 // ── Input Validation ──────────────────────────────────────────
 function parseInputs() {
-  const rawQueue       = requestQueueInput.value.trim();
-  const rawHead        = headPositionInput.value.trim();
-  const rawDiskSize    = diskSizeInput.value.trim();
-  const algo           = algorithmSelect.value;
-  const direction      = document.querySelector('input[name="direction"]:checked').value;
+  const rawQueue = requestQueueInput.value.trim();
+  const rawHead = headPositionInput.value.trim();
+  const rawDiskSize = diskSizeInput.value.trim();
+  const algo = algorithmSelect.value;
+  const direction = document.querySelector('input[name="direction"]:checked').value;
 
-  if (!rawQueue)         throw new Error('Request queue cannot be empty.');
-  if (!rawHead)          throw new Error('Initial head position is required.');
+  if (!rawQueue) throw new Error('Request queue cannot be empty.');
+  if (!rawHead) throw new Error('Initial head position is required.');
 
   const requests = rawQueue.split(',').map(s => {
     const n = parseInt(s.trim(), 10);
@@ -212,9 +217,9 @@ function sstf(head, requests) {
 
 function scan(head, requests, diskSize, direction) {
   const sorted = [...requests].sort((a, b) => a - b);
-  const left   = sorted.filter(r => r <  head).reverse();
-  const right  = sorted.filter(r => r >= head);
-  const order  = [head];
+  const left = sorted.filter(r => r < head).reverse();
+  const right = sorted.filter(r => r >= head);
+  const order = [head];
   let seek = 0, current = head;
 
   const traverse = (list) => {
@@ -247,9 +252,9 @@ function scan(head, requests, diskSize, direction) {
 
 function cscan(head, requests, diskSize, direction) {
   const sorted = [...requests].sort((a, b) => a - b);
-  const left   = sorted.filter(r => r <  head).reverse();
-  const right  = sorted.filter(r => r >= head);
-  const order  = [head];
+  const left = sorted.filter(r => r < head).reverse();
+  const right = sorted.filter(r => r >= head);
+  const order = [head];
   let seek = 0, current = head;
 
   const traverse = (list) => {
@@ -287,9 +292,9 @@ function cscan(head, requests, diskSize, direction) {
 
 function look(head, requests, direction) {
   const sorted = [...requests].sort((a, b) => a - b);
-  const left   = sorted.filter(r => r <  head).reverse();
-  const right  = sorted.filter(r => r >= head);
-  const order  = [head];
+  const left = sorted.filter(r => r < head).reverse();
+  const right = sorted.filter(r => r >= head);
+  const order = [head];
   let seek = 0, current = head;
 
   const traverse = (list) => {
@@ -312,26 +317,29 @@ function look(head, requests, direction) {
 
 function runAlgorithm(algo, head, requests, diskSize, direction) {
   switch (algo) {
-    case 'fcfs':  return fcfs(head, requests);
-    case 'sstf':  return sstf(head, requests);
-    case 'scan':  return scan(head, requests, diskSize, direction);
+    case 'fcfs': return fcfs(head, requests);
+    case 'sstf': return sstf(head, requests);
+    case 'scan': return scan(head, requests, diskSize, direction);
     case 'cscan': return cscan(head, requests, diskSize, direction);
-    case 'look':  return look(head, requests, direction);
+    case 'look': return look(head, requests, direction);
     default: throw new Error('Unknown algorithm selected.');
   }
 }
 
 // ── Canvas Helpers ────────────────────────────────────────────
-const CANVAS_H    = 320;
-const PADDING_X   = 60;
-const PADDING_Y   = 40;
-const AXIS_Y      = CANVAS_H - PADDING_Y;
+const CANVAS_H = 320;
+const PADDING_X = 60;
+const PADDING_Y = 40;
+const AXIS_Y = CANVAS_H - PADDING_Y;
 const GRAPH_TOP_Y = PADDING_Y + 30;
 
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width  = rect.width - 24;  // account for card-body padding
+  const w = rect.width - 24;
+  canvas.width = w;
   canvas.height = CANVAS_H;
+  highlightCanvas.width = w;
+  highlightCanvas.height = CANVAS_H;
 }
 
 function getX(cylinder, minC, maxC) {
@@ -425,9 +433,69 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ── Main Animation ────────────────────────────────────────────
+// ── Start-point pop animation ──────────────────────────────
+async function showStartAnimation(x, y, cylinder) {
+  const maxR = 10;
+  // Phase 1: grow from 0 → maxR with glow (on highlight canvas)
+  for (let r = 0; r <= maxR; r++) {
+    hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+    const alpha = r / maxR;
+    // outer glow ring
+    hCtx.shadowColor = '#a855f7';
+    hCtx.shadowBlur = 20;
+    hCtx.strokeStyle = `rgba(168,85,247,${alpha})`;
+    hCtx.lineWidth = 2;
+    hCtx.beginPath();
+    hCtx.arc(x, y, Math.max(r + 4, 5), 0, Math.PI * 2);
+    hCtx.stroke();
+    // filled dot
+    hCtx.shadowBlur = 16;
+    hCtx.fillStyle = `rgba(168,85,247,${alpha})`;
+    hCtx.beginPath();
+    hCtx.arc(x, y, r, 0, Math.PI * 2);
+    hCtx.fill();
+    hCtx.shadowBlur = 0;
+    await sleep(18);
+    if (!animationRunning) return;
+  }
+  // Phase 2: pulse ring expansion
+  for (let r = maxR; r <= maxR + 18; r += 2) {
+    hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+    const alpha = 1 - (r - maxR) / 18;
+    // pulse ring
+    hCtx.strokeStyle = `rgba(168,85,247,${alpha})`;
+    hCtx.lineWidth = 2;
+    hCtx.beginPath();
+    hCtx.arc(x, y, r, 0, Math.PI * 2);
+    hCtx.stroke();
+    // stable center dot
+    hCtx.shadowColor = '#a855f7'; hCtx.shadowBlur = 14;
+    hCtx.fillStyle = '#a855f7';
+    hCtx.beginPath();
+    hCtx.arc(x, y, maxR, 0, Math.PI * 2);
+    hCtx.fill();
+    hCtx.shadowBlur = 0;
+    await sleep(20);
+    if (!animationRunning) return;
+  }
+  // Phase 3: stamp "START" label on main canvas, draw permanent dot
+  ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 14;
+  ctx.fillStyle = '#a855f7';
+  ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.shadowBlur = 0;
+  ctx.font = 'bold 600 10px Poppins, Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('START', x, y - 16);
+  // clear highlight canvas for upcoming path
+  hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+  // pause before path starts
+  await sleep(480);
+}
+
+// ── Main Animation ──────────────────────────────────────────
 async function animate(order, algoName, seekTotal) {
   animationRunning = true;
+  drawnPoints = [];
   setStatus('running');
   movementTicker.style.display = 'flex';
 
@@ -442,7 +510,7 @@ async function animate(order, algoName, seekTotal) {
   clearCanvas();
   drawBackground(order, minC, maxC, totalSteps);
 
-  // Draw dots for all request positions
+  // Faint tick marks for every request on the axis
   for (const pos of order) {
     const x = getX(pos, minC, maxC);
     ctx.fillStyle = 'rgba(59,130,246,0.15)';
@@ -451,28 +519,38 @@ async function animate(order, algoName, seekTotal) {
     ctx.fill();
   }
 
-  // Animate each segment
+  // ── Head initialization pop animation ──────────────────
+  const startX = getX(order[0], minC, maxC);
+  const startY = getY(0, totalSteps);
+  await showStartAnimation(startX, startY, order[0]);
+  if (!animationRunning) return;
+
+  // Record start point
+  drawnPoints.push({ x: startX, y: startY, cylinder: order[0], step: 0, fromCyl: order[0], toCyl: order[0] });
+
+  // ── Animate each segment ──────────────────────────────
   for (let step = 0; step < totalSteps; step++) {
     const from = order[step];
-    const to   = order[step + 1];
+    const to = order[step + 1];
     const dist = Math.abs(to - from);
 
     const x1 = getX(from, minC, maxC);
     const y1 = getY(step, totalSteps);
-    const x2 = getX(to,   minC, maxC);
+    const x2 = getX(to, minC, maxC);
     const y2 = getY(step + 1, totalSteps);
 
     const isFirst = step === 0;
-    const isLast  = step === totalSteps - 1;
+    const isLast = step === totalSteps - 1;
     const segColor = isFirst ? '#a855f7' : isLast ? '#22c55e' : '#3b82f6';
 
-    // draw dots at fixed points
-    ctx.fillStyle = 'rgba(139,148,158,0.5)';
-    ctx.beginPath();
-    ctx.arc(x1, y1, 4, 0, Math.PI * 2);
-    ctx.fill();
+    // waypoint dot at origin of this segment
+    if (step > 0) {
+      ctx.fillStyle = 'rgba(139,148,158,0.55)';
+      ctx.beginPath();
+      ctx.arc(x1, y1, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // Animate segment in sub-steps
     const subSteps = 30;
     const delay = getDelay();
 
@@ -497,18 +575,22 @@ async function animate(order, algoName, seekTotal) {
       lastX = curX; lastY = curY;
 
       if (f === subSteps) {
-        // Draw endpoint dot
         ctx.shadowBlur = 0;
         ctx.fillStyle = segColor;
         ctx.beginPath();
-        ctx.arc(curX, curY, isLast ? 7 : 5, 0, Math.PI * 2);
+        ctx.arc(curX, curY, isLast ? 8 : 5, 0, Math.PI * 2);
         ctx.fill();
         if (isLast) {
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = 'rgba(255,255,255,.7)';
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(curX, curY, 7, 0, Math.PI * 2);
+          ctx.arc(curX, curY, 8, 0, Math.PI * 2);
           ctx.stroke();
+          // END label
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 10px Poppins, Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('END', curX, curY - 16);
         }
         ctx.shadowColor = 'transparent';
       }
@@ -517,35 +599,151 @@ async function animate(order, algoName, seekTotal) {
       if (!animationRunning) return;
     }
 
+    // Record this endpoint for tooltip interaction
+    drawnPoints.push({
+      x: x2, y: y2,
+      cylinder: to,
+      step: step + 1,
+      fromCyl: from,
+      toCyl: to,
+    });
+
     cumulativeSeek += dist;
     tickerText.textContent = `${from} → ${to}  (+${dist})`;
-    seekLive.textContent   = `Seek: ${cumulativeSeek}`;
-
-    // Update results live
+    seekLive.textContent = `Seek: ${cumulativeSeek}`;
     resSeekTime.textContent = cumulativeSeek;
+
     await sleep(delay * 0.3);
     if (!animationRunning) return;
   }
 
-  // Final glowing head marker
-  const finalX = getX(order[totalSteps], minC, maxC);
-  const finalY = getY(totalSteps, totalSteps);
-  ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 16;
-  ctx.fillStyle   = '#22c55e';
-  ctx.beginPath(); ctx.arc(finalX, finalY, 8, 0, Math.PI * 2); ctx.fill();
-  ctx.shadowBlur = 0;
-
-  // start label
-  const startX = getX(order[0], minC, maxC);
-  const startY = getY(0, totalSteps);
-  ctx.fillStyle = '#a855f7'; ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 12;
-  ctx.beginPath(); ctx.arc(startX, startY, 8, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.shadowBlur = 0; ctx.font = 'bold 10px Inter, sans-serif';
-  ctx.textAlign = 'center'; ctx.fillText('START', startX, startY - 14);
-
   setStatus('done');
   tickerText.textContent = `Simulation complete — Total seek: ${cumulativeSeek}`;
   animationRunning = false;
+
+  // Enable interactive tooltips now that all points are recorded
+  setupCanvasInteraction();
+}
+
+// ── Interaction: nearest-point detection ─────────────────────
+
+function findNearestPoint(mx, my) {
+  const RADIUS = 22; // px hit radius
+  let best = null, bestDist = RADIUS;
+  for (const pt of drawnPoints) {
+    const d = Math.hypot(pt.x - mx, pt.y - my);
+    if (d < bestDist) { bestDist = d; best = pt; }
+  }
+  return best;
+}
+
+function drawHighlightPoint(pt) {
+  hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+  const color = pt.step === 0 ? '#a855f7'
+    : pt.step === drawnPoints.length - 1 ? '#22c55e'
+      : '#3b82f6';
+  // outer glow ring
+  hCtx.shadowColor = color; hCtx.shadowBlur = 18;
+  hCtx.strokeStyle = `${color}88`;
+  hCtx.lineWidth = 2.5;
+  hCtx.beginPath();
+  hCtx.arc(pt.x, pt.y, 14, 0, Math.PI * 2);
+  hCtx.stroke();
+  // inner bright ring
+  hCtx.shadowBlur = 8;
+  hCtx.strokeStyle = color;
+  hCtx.lineWidth = 2;
+  hCtx.beginPath();
+  hCtx.arc(pt.x, pt.y, 9, 0, Math.PI * 2);
+  hCtx.stroke();
+  hCtx.shadowBlur = 0;
+}
+
+function showTooltip(pt, pageX, pageY) {
+  const isStart = pt.step === 0;
+  const isEnd = pt.step === drawnPoints.length - 1;
+  const moveStr = isStart ? '— (start)' : `${pt.fromCyl} → ${pt.toCyl}`;
+  const dist = isStart ? 0 : Math.abs(pt.toCyl - pt.fromCyl);
+
+  tooltipEl.innerHTML = `
+    <div class="tooltip-row">
+      <span class="tooltip-label">Track</span>
+      <span class="tooltip-value accent">${pt.cylinder}</span>
+    </div>
+    <div class="tooltip-row">
+      <span class="tooltip-label">Step</span>
+      <span class="tooltip-value">${pt.step}${isStart ? ' (start)' : isEnd ? ' (end)' : ''}</span>
+    </div>
+    <div class="tooltip-row">
+      <span class="tooltip-label">Move</span>
+      <span class="tooltip-value">${moveStr}</span>
+    </div>
+    ${!isStart ? `<div class="tooltip-row">
+      <span class="tooltip-label">Δ Seek</span>
+      <span class="tooltip-value">${dist}</span>
+    </div>` : ''}
+  `;
+
+  // Position: offset from cursor, clamp to window
+  const TW = 168, TH = 110;
+  let tx = pageX + 16;
+  let ty = pageY - TH / 2;
+  if (tx + TW > window.innerWidth - 8) tx = pageX - TW - 16;
+  if (ty < 8) ty = 8;
+  if (ty + TH > window.innerHeight - 8) ty = window.innerHeight - TH - 8;
+
+  tooltipEl.style.left = `${tx}px`;
+  tooltipEl.style.top = `${ty}px`;
+  tooltipEl.classList.add('visible');
+}
+
+function hideTooltip() {
+  tooltipEl.classList.remove('visible');
+  hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+}
+
+function setupCanvasInteraction() {
+  // Remove old hit area if re-running
+  if (hitArea) hitArea.remove();
+  hitArea = document.createElement('div');
+  hitArea.className = 'canvas-hit-area';
+  canvas.parentElement.appendChild(hitArea);
+
+  function getCanvasCoords(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  }
+
+  hitArea.addEventListener('mousemove', (e) => {
+    const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+    const pt = findNearestPoint(x, y);
+    if (pt) {
+      drawHighlightPoint(pt);
+      showTooltip(pt, e.clientX, e.clientY);
+      hitArea.style.cursor = 'pointer';
+    } else {
+      hideTooltip();
+      hitArea.style.cursor = 'crosshair';
+    }
+  });
+
+  hitArea.addEventListener('mouseleave', hideTooltip);
+
+  hitArea.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
+    const pt = findNearestPoint(x, y);
+    if (pt) { drawHighlightPoint(pt); showTooltip(pt, touch.clientX, touch.clientY); }
+    else { hideTooltip(); }
+  }, { passive: false });
+
+  hitArea.addEventListener('touchend', hideTooltip);
 }
 
 // ── Execution Order Display ───────────────────────────────────
@@ -646,9 +844,9 @@ async function runSimulation() {
 
   // Show results panel
   resultsPanel.style.display = '';
-  resAlgoName.textContent  = algoName;
-  resSeekTime.textContent  = 0;
-  resReqCount.textContent  = requests.length;
+  resAlgoName.textContent = algoName;
+  resSeekTime.textContent = 0;
+  resReqCount.textContent = requests.length;
   renderExecOrder(order);
 
   // Hide placeholder, show canvas
@@ -668,7 +866,11 @@ async function runSimulation() {
 // ── Reset ─────────────────────────────────────────────────────
 function resetAll() {
   animationRunning = false;
+  drawnPoints = [];
   clearCanvas();
+  hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+  hideTooltip();
+  if (hitArea) { hitArea.remove(); hitArea = null; }
   clearError();
   canvasPlaceholder.classList.remove('hidden');
   movementTicker.style.display = 'none';

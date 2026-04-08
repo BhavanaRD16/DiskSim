@@ -809,6 +809,86 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border: 1px solid rgba(255, 255, 255, .06);
 }
 
+/* Highlight overlay canvas — sits on top, intercepts hover events */
+#highlight-canvas {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  width: calc(100% - 2.5rem);
+  height: calc(100% - 2.5rem);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+  /* events go to the wrapper div instead */
+  z-index: 2;
+}
+
+/* Interactive hit area over canvas */
+.canvas-hit-area {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  width: calc(100% - 2.5rem);
+  height: calc(100% - 2.5rem);
+  z-index: 3;
+  cursor: crosshair;
+}
+
+/* Graph tooltip */
+.graph-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .18s ease, transform .18s ease;
+  padding: .55rem .85rem;
+  background: rgba(7, 11, 20, .92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, .35);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5), 0 0 0 1px rgba(59, 130, 246, .1);
+  min-width: 148px;
+}
+
+.graph-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+  padding: .15rem 0;
+}
+
+.tooltip-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+  padding-bottom: .25rem;
+  margin-bottom: .25rem;
+}
+
+.tooltip-label {
+  font-size: .67rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-tertiary);
+}
+
+.tooltip-value {
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.tooltip-value.accent {
+  color: var(--accent-cyan);
+}
+
 .canvas-overlay {
   position: absolute;
   inset: 1.25rem;
