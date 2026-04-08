@@ -43,7 +43,7 @@ let hitArea = null; // dynamic div for mouse/touch
 // ── Algorithm Metadata ────────────────────────────────────────
 const ALGO_INFO = {
   fcfs: {
-    label: 'First Come First Serve (FCFS)',
+    label: 'First Come First Served (FCFS)',
     subtitle: 'Simplest scheduling policy — no reordering of requests.',
     description: `FCFS services disk requests strictly in the order they arrive in the queue. The disk head moves to each cylinder in the sequence requested, without any optimization for proximity. While conceptually straightforward and fair, FCFS can result in substantial head movement when requests are scattered across the disk.`,
     advantages: [
@@ -162,7 +162,7 @@ function parseInputs() {
   if (!rawQueue) throw new Error('Request queue cannot be empty.');
   if (!rawHead) throw new Error('Initial head position is required.');
 
-  const requests = rawQueue.split(',').map(s => {
+  const requests = rawQueue.split(/[,\s]+/).filter(s => s.length > 0).map(s => {
     const n = parseInt(s.trim(), 10);
     if (isNaN(n)) throw new Error(`Invalid value in request queue: "${s.trim()}"`);
     return n;
@@ -407,7 +407,7 @@ function drawBackground(order, minC, maxC, totalSteps) {
   ctx.save();
   ctx.translate(14, CANVAS_H / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillText('Step', 0, 0);
+  ctx.fillText('Step / Sequence', 0, 0);
   ctx.restore();
 }
 
@@ -618,7 +618,7 @@ async function animate(order, algoName, seekTotal) {
   }
 
   setStatus('done');
-  tickerText.textContent = `Simulation complete — Total seek: ${cumulativeSeek}`;
+  tickerText.innerHTML = `<span style="color:var(--accent-green)">✔ Simulation Complete</span> <span style="opacity:0.5;margin:0 8px">|</span> Total Seek Time: <span style="color:#fff;font-weight:600">${cumulativeSeek}</span>`;
   animationRunning = false;
 
   // Enable interactive tooltips now that all points are recorded
