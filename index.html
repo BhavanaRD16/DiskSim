@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HDD Scheduling Simulator</title>
+  <meta name="description" content="An interactive educational simulator for visualizing and comparing HDD disk scheduling algorithms including FCFS, SSTF, SCAN, C-SCAN, and LOOK." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="17" cy="12" r="2" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="6" y1="9" x2="12" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="6" y1="12" x2="10" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="6" y1="15" x2="14" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1>DiskSim</h1>
+          <span>HDD Scheduling Simulator</span>
+        </div>
+      </div>
+      <div class="header-badge">
+        <span class="badge-dot"></span>
+        OS Concepts &bull; Academic Tool
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT -->
+  <main class="app-main">
+
+    <!-- LEFT COLUMN: Input + Algorithm Info -->
+    <aside class="sidebar">
+
+      <!-- INPUT PANEL -->
+      <section class="card" id="input-panel">
+        <div class="card-header">
+          <span class="card-icon">⚙</span>
+          <h2>Configuration</h2>
+        </div>
+        <div class="card-body">
+
+          <div class="form-group">
+            <label for="request-queue">Request Queue</label>
+            <input type="text" id="request-queue" placeholder="e.g. 98, 183, 37, 122, 14, 124, 65, 67" />
+            <span class="hint">Comma-separated disk cylinder numbers</span>
+          </div>
+
+          <div class="form-group">
+            <label for="head-position">Initial Head Position</label>
+            <input type="number" id="head-position" placeholder="e.g. 53" min="0" />
+          </div>
+
+          <div class="form-group" id="disk-size-group">
+            <label for="disk-size">Disk Size (cylinders)</label>
+            <input type="number" id="disk-size" placeholder="e.g. 200" min="1" />
+            <span class="hint">Used only for SCAN and C-SCAN</span>
+          </div>
+
+          <div class="form-group" id="direction-group">
+            <label>Head Direction</label>
+            <div class="radio-group">
+              <label class="radio-label" for="dir-right">
+                <input type="radio" id="dir-right" name="direction" value="right" checked />
+                <span class="radio-custom"></span>
+                Right (Ascending)
+              </label>
+              <label class="radio-label" for="dir-left">
+                <input type="radio" id="dir-left" name="direction" value="left" />
+                <span class="radio-custom"></span>
+                Left (Descending)
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="algorithm-select">Algorithm</label>
+            <div class="select-wrapper">
+              <select id="algorithm-select">
+                <option value="fcfs">FCFS — First Come First Serve</option>
+                <option value="sstf">SSTF — Shortest Seek Time First</option>
+                <option value="scan">SCAN — Elevator Algorithm</option>
+                <option value="cscan">C-SCAN — Circular SCAN</option>
+                <option value="look">LOOK</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="speed-slider">Animation Speed</label>
+            <div class="slider-row">
+              <span class="slider-label">Slow</span>
+              <input type="range" id="speed-slider" min="1" max="10" value="5" />
+              <span class="slider-label">Fast</span>
+            </div>
+          </div>
+
+          <div class="error-box" id="error-box" style="display:none;"></div>
+
+          <div class="btn-row">
+            <button id="run-btn" class="btn btn-primary">
+              <span>▶</span> Run Simulation
+            </button>
+            <button id="reset-btn" class="btn btn-ghost">
+              ↺ Reset
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ALGORITHM INFO CARD -->
+      <section class="card" id="algo-info-card">
+        <div class="card-header">
+          <span class="card-icon">ℹ</span>
+          <h2>Algorithm Info</h2>
+        </div>
+        <div class="card-body" id="algo-info-body">
+          <div class="info-placeholder">Select an algorithm to see its description, advantages, and limitations.</div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- RIGHT COLUMN: Visualization + Results + Comparison -->
+    <div class="content-area">
+
+      <!-- VISUALIZATION PANEL -->
+      <section class="card" id="viz-panel">
+        <div class="card-header">
+          <span class="card-icon">◈</span>
+          <h2>Disk Head Movement</h2>
+          <div class="status-badge" id="sim-status">Ready</div>
+        </div>
+        <div class="card-body viz-body">
+          <canvas id="disk-canvas"></canvas>
+          <div class="canvas-overlay" id="canvas-placeholder">
+            <div class="placeholder-icon">📀</div>
+            <p>Configure inputs and click <strong>Run Simulation</strong> to visualize disk head movement</p>
+          </div>
+        </div>
+        <div class="movement-ticker" id="movement-ticker" style="display:none;">
+          <span class="ticker-label">Current Move</span>
+          <span class="ticker-value" id="ticker-text">—</span>
+          <span class="seek-live" id="seek-live">Seek: 0</span>
+        </div>
+      </section>
+
+      <!-- RESULTS PANEL -->
+      <section class="card" id="results-panel" style="display:none;">
+        <div class="card-header">
+          <span class="card-icon">📊</span>
+          <h2>Simulation Results</h2>
+        </div>
+        <div class="card-body">
+          <div class="results-grid">
+            <div class="result-stat">
+              <span class="stat-label">Algorithm</span>
+              <span class="stat-value" id="res-algo-name">—</span>
+            </div>
+            <div class="result-stat highlight">
+              <span class="stat-label">Total Seek Time</span>
+              <span class="stat-value" id="res-seek-time">—</span>
+            </div>
+            <div class="result-stat">
+              <span class="stat-label">Requests Served</span>
+              <span class="stat-value" id="res-req-count">—</span>
+            </div>
+          </div>
+          <div class="execution-order">
+            <span class="exec-label">Execution Order</span>
+            <div class="exec-sequence" id="exec-sequence"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COMPARISON TABLE -->
+      <section class="card" id="comparison-panel">
+        <div class="card-header">
+          <span class="card-icon">⬡</span>
+          <h2>Algorithm Comparison</h2>
+          <span class="header-note">Run each algorithm to populate</span>
+        </div>
+        <div class="card-body">
+          <div class="table-wrapper">
+            <table id="comparison-table">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Total Seek Time</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="comparison-tbody">
+                <tr class="empty-row"><td colspan="3">No results yet. Run a simulation to begin.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="app-footer">
+    <p>HDD Scheduling Simulator &mdash; Operating Systems Academic Project &mdash; Built with HTML, CSS &amp; JavaScript</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
