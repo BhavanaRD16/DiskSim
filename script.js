@@ -334,8 +334,11 @@ const AXIS_Y = CANVAS_H - PADDING_Y;
 const GRAPH_TOP_Y = PADDING_Y + 30;
 
 function resizeCanvas() {
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const w = rect.width - 24;
+  const parent = canvas.parentElement;
+  const rect = parent.getBoundingClientRect();
+  const style = getComputedStyle(parent);
+  const hSpace = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 2;
+  const w = rect.width - hSpace;
   canvas.width = w;
   canvas.height = CANVAS_H;
   highlightCanvas.width = w;
@@ -357,56 +360,83 @@ function clearCanvas() {
 
 function drawBackground(order, minC, maxC, totalSteps) {
   const graphW = canvas.width - PADDING_X * 2;
-  // background
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-surface').trim() || '#161b22';
+  const graphH = AXIS_Y - GRAPH_TOP_Y;
+
+  // 1. Solid background (dynamic to theme)
+  const style = getComputedStyle(document.documentElement);
+  ctx.fillStyle = style.getPropertyValue('--bg-base').trim() || '#070b14';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // grid lines
-  const gridCount = 8;
-  ctx.strokeStyle = 'rgba(42,51,71,0.7)';
+  // 2. Horizontal step grid lines
   ctx.lineWidth = 1;
-  for (let i = 0; i <= gridCount; i++) {
-    const x = PADDING_X + (i / gridCount) * graphW;
-    ctx.beginPath();
-    ctx.moveTo(x, GRAPH_TOP_Y - 10);
-    ctx.lineTo(x, AXIS_Y + 10);
-    ctx.stroke();
-
-    // labels
-    const val = Math.round(minC + (i / gridCount) * (maxC - minC));
-    ctx.fillStyle = 'rgba(139,148,158,0.6)';
-    ctx.font = '11px JetBrains Mono, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(val, x, AXIS_Y + 24);
-  }
-
-  // axis line
-  ctx.strokeStyle = 'rgba(42,51,71,1)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(PADDING_X, AXIS_Y + 10);
-  ctx.lineTo(canvas.width - PADDING_X, AXIS_Y + 10);
-  ctx.stroke();
-
-  // step labels on left
+  ctx.textAlign = 'right';
   for (let s = 0; s <= totalSteps; s++) {
     const y = getY(s, totalSteps);
-    ctx.fillStyle = 'rgba(139,148,158,0.4)';
-    ctx.font = '10px JetBrains Mono, monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${s}`, PADDING_X - 10, y + 4);
+    // Grid line
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)'; // faint cyan for step divisions
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(PADDING_X, y);
+    ctx.lineTo(canvas.width - PADDING_X, y);
+    ctx.stroke();
+
+    // Step label
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.9)'; // lighter gray
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.fillText(`${s}`, PADDING_X - 12, y + 4);
+  }
+  ctx.setLineDash([]); // reset
+
+  // 3. Vertical cylinder bounding / reference lines
+  const range = maxC - minC;
+  let gridCount = 10;
+  if (range > 0 && range < 10) gridCount = range;
+
+  for (let i = 0; i <= gridCount; i++) {
+    const x = PADDING_X + (i / gridCount) * graphW;
+    const isBoundary = (i === 0 || i === gridCount);
+
+    // Vertical line
+    ctx.strokeStyle = isBoundary ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.1)';
+    ctx.lineWidth = isBoundary ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(x, GRAPH_TOP_Y - 15);
+    ctx.lineTo(x, AXIS_Y + 15);
+    ctx.stroke();
+
+    // Bottom label
+    const val = Math.round(minC + (i / gridCount) * (maxC - minC));
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    ctx.fillStyle = isBoundary ? '#3b82f6' : (isLight ? 'rgba(71, 85, 105, 0.6)' : 'rgba(148, 163, 184, 0.7)');
+    ctx.font = isBoundary ? 'bold 12px Inter, sans-serif' : '11px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(val, x, AXIS_Y + 28);
+
   }
 
+  // 4. Main Horizontal X-Axis Line
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PADDING_X - 5, AXIS_Y + 15);
+  ctx.lineTo(canvas.width - PADDING_X + 5, AXIS_Y + 15);
+  ctx.stroke();
+
+
+
   // X-axis label
-  ctx.fillStyle = 'rgba(139,148,158,0.5)';
-  ctx.font = '11px Inter, sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '500 12px Inter, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Cylinder Number', canvas.width / 2, CANVAS_H - 6);
+  ctx.fillText('Cylinder Number', canvas.width / 2, CANVAS_H - 2);
 
   // Y-axis label
   ctx.save();
-  ctx.translate(14, CANVAS_H / 2);
+  ctx.translate(16, CANVAS_H / 2);
   ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '500 12px Inter, sans-serif';
+  ctx.textAlign = 'center';
   ctx.fillText('Step / Sequence', 0, 0);
   ctx.restore();
 }
@@ -482,7 +512,10 @@ async function showStartAnimation(x, y, cylinder) {
   ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 14;
   ctx.fillStyle = '#a855f7';
   ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.shadowBlur = 0;
+
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  ctx.fillStyle = isLight ? '#0f172a' : '#fff';
+  ctx.shadowBlur = 0;
   ctx.font = 'bold 600 10px Poppins, Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('START', x, y - 16);
@@ -493,15 +526,17 @@ async function showStartAnimation(x, y, cylinder) {
 }
 
 // ── Main Animation ──────────────────────────────────────────
-async function animate(order, algoName, seekTotal) {
+async function animate(order, algoName, seekTotal, diskSize = null) {
   animationRunning = true;
   drawnPoints = [];
   setStatus('running');
   movementTicker.style.display = 'flex';
 
   resizeCanvas();
-  const minC = Math.min(...order);
-  const maxC = Math.max(...order);
+  // Standardize graph scale from 0 to max request or diskSize boundary
+  const minC = 0;
+  const orderMax = Math.max(...order);
+  const maxC = diskSize ? diskSize - 1 : Math.max(1, orderMax);
   const totalSteps = order.length - 1;
 
   let cumulativeSeek = 0;
@@ -556,9 +591,9 @@ async function animate(order, algoName, seekTotal) {
 
     ctx.strokeStyle = segColor;
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = segColor;
-    ctx.shadowBlur = 6;
     ctx.setLineDash([]);
+
+
 
     let lastX = x1, lastY = y1;
 
@@ -575,11 +610,12 @@ async function animate(order, algoName, seekTotal) {
       lastX = curX; lastY = curY;
 
       if (f === subSteps) {
-        ctx.shadowBlur = 0;
         ctx.fillStyle = segColor;
         ctx.beginPath();
         ctx.arc(curX, curY, isLast ? 8 : 5, 0, Math.PI * 2);
         ctx.fill();
+
+
         if (isLast) {
           ctx.strokeStyle = 'rgba(255,255,255,.7)';
           ctx.lineWidth = 2;
@@ -587,7 +623,8 @@ async function animate(order, algoName, seekTotal) {
           ctx.arc(curX, curY, 8, 0, Math.PI * 2);
           ctx.stroke();
           // END label
-          ctx.fillStyle = '#fff';
+          const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+          ctx.fillStyle = isLight ? '#0f172a' : '#fff';
           ctx.font = 'bold 10px Poppins, Inter, sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('END', curX, curY - 16);
@@ -618,8 +655,10 @@ async function animate(order, algoName, seekTotal) {
   }
 
   setStatus('done');
-  tickerText.innerHTML = `<span style="color:var(--accent-green)">✔ Simulation Complete</span> <span style="opacity:0.5;margin:0 8px">|</span> Total Seek Time: <span style="color:#fff;font-weight:600">${cumulativeSeek}</span>`;
+  tickerText.innerHTML = `<span style="color:var(--accent-green)">✔ Simulation Complete</span> <span style="opacity:0.5;margin:0 8px">|</span> Total Seek Time: <span style="color:var(--text-primary);font-weight:600">${cumulativeSeek}</span>`;
   animationRunning = false;
+
+
 
   // Enable interactive tooltips now that all points are recorded
   setupCanvasInteraction();
@@ -659,7 +698,7 @@ function drawHighlightPoint(pt) {
   hCtx.shadowBlur = 0;
 }
 
-function showTooltip(pt, pageX, pageY) {
+function showTooltip(pt) {
   const isStart = pt.step === 0;
   const isEnd = pt.step === drawnPoints.length - 1;
   const moveStr = isStart ? '— (start)' : `${pt.fromCyl} → ${pt.toCyl}`;
@@ -684,17 +723,47 @@ function showTooltip(pt, pageX, pageY) {
     </div>` : ''}
   `;
 
-  // Position: offset from cursor, clamp to window
-  const TW = 168, TH = 110;
-  let tx = pageX + 16;
-  let ty = pageY - TH / 2;
-  if (tx + TW > window.innerWidth - 8) tx = pageX - TW - 16;
-  if (ty < 8) ty = 8;
-  if (ty + TH > window.innerHeight - 8) ty = window.innerHeight - TH - 8;
+
+  // Position: anchor rigidly to the point coordinates
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = rect.width / canvas.width;
+  const scaleY = rect.height / canvas.height;
+
+  const viewportX = rect.left + pt.x * scaleX;
+  const viewportY = rect.top + pt.y * scaleY;
+
+  // Use natural height to properly elevate it fully above the dot
+  const TH = tooltipEl.offsetHeight || 130;
+  const TW = 172;
+
+  // Pivot check: if node is in the right-most 30% of the screen, 
+  // shift the tooltip to the left of the dot.
+  const screenPct = viewportX / window.innerWidth;
+  let tx;
+
+  if (screenPct > 0.7) {
+    tx = viewportX - TW - 20; // Pivot left
+  } else if (screenPct < 0.3) {
+    tx = viewportX + 20;      // Pivot right
+  } else {
+    tx = viewportX - TW / 2; // Center
+  }
+
+  let ty = viewportY - TH - 16; // Above the point
+
+  // Safety bounds
+  if (tx < 12) tx = 12;
+  if (tx + TW > window.innerWidth - 12) tx = window.innerWidth - TW - 12;
+
+  // If hitting the top of the browser, flip it to show below the point
+  if (ty < 12) {
+    ty = viewportY + 24;
+  }
 
   tooltipEl.style.left = `${tx}px`;
   tooltipEl.style.top = `${ty}px`;
   tooltipEl.classList.add('visible');
+
 }
 
 function hideTooltip() {
@@ -724,7 +793,7 @@ function setupCanvasInteraction() {
     const pt = findNearestPoint(x, y);
     if (pt) {
       drawHighlightPoint(pt);
-      showTooltip(pt, e.clientX, e.clientY);
+      showTooltip(pt);
       hitArea.style.cursor = 'pointer';
     } else {
       hideTooltip();
@@ -739,7 +808,7 @@ function setupCanvasInteraction() {
     const touch = e.touches[0];
     const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
     const pt = findNearestPoint(x, y);
-    if (pt) { drawHighlightPoint(pt); showTooltip(pt, touch.clientX, touch.clientY); }
+    if (pt) { drawHighlightPoint(pt); showTooltip(pt); }
     else { hideTooltip(); }
   }, { passive: false });
 
@@ -849,13 +918,17 @@ async function runSimulation() {
   resReqCount.textContent = requests.length;
   renderExecOrder(order);
 
+  // Show movement ticker
+  if (movementTicker) movementTicker.style.display = 'flex';
+
+
   // Hide placeholder, show canvas
   canvasPlaceholder.classList.add('hidden');
 
   // Run animation
   runBtn.disabled = true;
   runBtn.textContent = '⏳ Simulating…';
-  await animate(order, algoName, seek);
+  await animate(order, algoName, seek, diskSize);
   runBtn.disabled = false;
   runBtn.innerHTML = '<span>▶</span> Run Simulation';
 
@@ -909,6 +982,65 @@ window.addEventListener('resize', () => {
     if (!canvasPlaceholder.classList.contains('hidden')) resizeCanvas();
   }, 200);
 });
+
+// ── Theme Toggle ──────────────────────────────────────────────
+const themeToggleBtn = document.getElementById('theme-toggle');
+let currentTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', currentTheme);
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    localStorage.setItem('theme', currentTheme);
+
+    // Redraw graph lines to instantly match theme background if a simulation exists
+    if (!animationRunning && drawnPoints.length > 0) {
+      const order = drawnPoints.map(p => p.cylinder);
+      order.unshift(drawnPoints[0].fromCyl);
+
+      const parsedDisk = parseInt(document.getElementById('diskSize').value, 10);
+      const limit = isNaN(parsedDisk) ? null : parsedDisk - 1;
+      const minC = 0;
+      const maxC = limit !== null ? limit : Math.max(1, ...order);
+
+      clearCanvas();
+      drawBackground(order, minC, maxC, drawnPoints.length - 1);
+
+      // Re-draw segments and dots
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([]);
+      for (let i = 1; i < drawnPoints.length; i++) {
+        const pt = drawnPoints[i];
+        const prev = drawnPoints[i - 1];
+        const segColor = i === 1 ? '#a855f7' : i === drawnPoints.length - 1 ? '#22c55e' : '#3b82f6';
+        ctx.strokeStyle = segColor;
+        ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+
+        ctx.fillStyle = segColor;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, i === drawnPoints.length - 1 ? 8 : 5, 0, Math.PI * 2); ctx.fill();
+        if (i === drawnPoints.length - 1) {
+          ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = (currentTheme === 'light') ? '#0f172a' : '#fff';
+          ctx.font = 'bold 10px Poppins, Inter, sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText('END', pt.x, pt.y - 16);
+        }
+      }
+
+      // Re-draw start dot
+      const start = drawnPoints[0];
+      ctx.fillStyle = '#a855f7'; ctx.beginPath(); ctx.arc(start.x, start.y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = (currentTheme === 'light') ? '#0f172a' : '#fff';
+      ctx.font = 'bold 600 10px Poppins, Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('START', start.x, start.y - 16);
+    } else if (!animationRunning) {
+      // Just redraw empty background if no simulation ran
+      clearCanvas();
+      drawBackground([], 0, 100, 10);
+    }
+  });
+}
 
 // ── Init ──────────────────────────────────────────────────────
 (function init() {
