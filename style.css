@@ -1,9 +1,3 @@
-/* ============================================================
-   DiskSim – HDD Scheduling Simulator
-   style.css  –  Glassmorphism Dark Dashboard Theme
-   ============================================================ */
-
-/* ── Reset & Base ─────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -13,7 +7,6 @@
 }
 
 :root {
-  /* Core palette */
   --bg-base: #070b14;
   --bg-surface: rgba(255, 255, 255, .04);
   --bg-card: rgba(255, 255, 255, .055);
@@ -23,7 +16,6 @@
   --border: rgba(255, 255, 255, .10);
   --border-focus: rgba(99, 179, 237, .6);
 
-  /* Accents */
   --accent-blue: #3b82f6;
   --accent-cyan: #06b6d4;
   --accent-green: #22c55e;
@@ -31,37 +23,27 @@
   --accent-amber: #f59e0b;
   --accent-red: #ef4444;
 
-  /* Gradients */
   --grad-brand: linear-gradient(135deg, #3b82f6 0%, #06b6d4 50%, #22c55e 100%);
   --grad-btn: linear-gradient(135deg, #3b82f6, #06b6d4);
   --grad-btn-h: linear-gradient(135deg, #60a5fa, #22d3ee);
 
-  /* Glow */
   --glow-blue: 0 0 24px rgba(59, 130, 246, .35);
   --glow-cyan: 0 0 24px rgba(6, 182, 212, .35);
   --glow-green: 0 0 16px rgba(34, 197, 94, .4);
 
-  /* Text hierarchy — 4 clear tiers */
   --text-primary: #f0f6ff;
-  /* headings, key values */
   --text-secondary: #a8bbd4;
-  /* body copy, labels */
   --text-tertiary: #64788e;
-  /* hints, placeholders */
   --text-muted: #3d5166;
-  /* dividers, disabled */
 
-  /* Sizes */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
 
-  /* Shadow */
   --shadow-card: 0 8px 32px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .3);
   --shadow-lift: 0 16px 48px rgba(0, 0, 0, .55), 0 4px 12px rgba(0, 0, 0, .35);
 
-  /* Fonts */
   --font-display: 'Orbitron', monospace;
   --font-body: 'Poppins', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -70,7 +52,6 @@
   --transition-slow: .4s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -89,7 +70,6 @@
   background: var(--accent-blue);
 }
 
-/* ── Body & Background ────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
   height: 100vh;
@@ -103,9 +83,7 @@ body {
   font-family: var(--font-body);
   background-color: var(--bg-base);
   background-image:
-    /* Dot-grid texture */
     radial-gradient(circle, rgba(255, 255, 255, .018) 1px, transparent 1px),
-    /* Ambient glows */
     radial-gradient(ellipse 80% 50% at 15% 20%, rgba(59, 130, 246, .13) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 85% 75%, rgba(168, 85, 247, .11) 0%, transparent 55%),
     radial-gradient(ellipse 50% 35% at 50% 50%, rgba(6, 182, 212, .07) 0%, transparent 60%);
@@ -116,7 +94,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Glass mixin utility ──────────────────────────────────── */
 .glass {
   background: var(--bg-card);
   backdrop-filter: blur(16px) saturate(1.4);
@@ -124,7 +101,6 @@ body {
   border: 1px solid var(--border);
 }
 
-/* ── Header ─────────────────────────────────────────────────── */
 .app-header {
   position: sticky;
   top: 0;
@@ -145,7 +121,6 @@ body {
   height: 66px;
 }
 
-/* Logo */
 .logo-group {
   display: flex;
   align-items: center;
@@ -197,7 +172,6 @@ body {
   text-transform: uppercase;
 }
 
-/* Header badge & theme toggle */
 .header-badge {
   display: flex;
   align-items: center;
@@ -293,7 +267,6 @@ body {
   }
 }
 
-/* ── Main Layout ─────────────────────────────────────────────── */
 .app-main {
   max-width: 1440px;
   margin: 0 auto;
@@ -317,10 +290,8 @@ body {
   flex-direction: column;
   gap: 1.75rem;
   min-width: 0;
-  /* Prevents flex children from blowing out content */
 }
 
-/* ── Card ─────────────────────────────────────────────────────── */
 .card {
   background: var(--bg-card);
   backdrop-filter: blur(20px) saturate(1.6);
@@ -329,12 +300,10 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  /* Thin gradient accent line along the top */
   position: relative;
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 
-/* Gradient top-border accent */
 .card::before {
   content: '';
   position: absolute;
@@ -396,7 +365,6 @@ body {
   padding: 1.6rem;
 }
 
-/* ── Form Elements ───────────────────────────────────────────── */
 .form-group {
   margin-bottom: 1.25rem;
   transition: opacity var(--transition), max-height .35s var(--transition);
@@ -414,7 +382,6 @@ body {
   display: block;
   font-size: .7rem;
   font-weight: 600;
-  /* Upgraded from --text-muted → --text-tertiary for better readability */
   color: var(--text-tertiary);
   margin-bottom: .5rem;
   letter-spacing: .08em;
@@ -431,7 +398,6 @@ input[type="number"] {
   font-family: var(--font-body);
   font-size: .9rem;
   font-weight: 400;
-  /* Slightly taller for better touch + visual comfort */
   padding: .72rem 1.1rem;
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
@@ -466,7 +432,6 @@ input[type=number] {
   line-height: 1.5;
 }
 
-/* Select */
 .select-wrapper {
   position: relative;
 }
@@ -702,7 +667,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   backdrop-filter: blur(4px);
 }
 
-/* ── Buttons ─────────────────────────────────────────────────── */
 .btn-row {
   display: flex;
   gap: .75rem;
@@ -720,7 +684,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-family: var(--font-body);
   font-size: .9rem;
   font-weight: 600;
-  /* Taller buttons — more premium feel */
   padding: .82rem 1.25rem;
   cursor: pointer;
   position: relative;
@@ -729,7 +692,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   letter-spacing: .025em;
 }
 
-/* Run button gets 2x weight vs ghost */
 .btn-primary {
   flex: 2;
 }
@@ -788,7 +750,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: translateY(0);
 }
 
-/* ── Algorithm Info Card ─────────────────────────────────────── */
 .info-placeholder {
   color: var(--text-tertiary);
   font-size: .82rem;
@@ -897,7 +858,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--accent-amber);
 }
 
-/* ── Status Badge ────────────────────────────────────────────── */
 .status-badge {
   font-size: .68rem;
   font-weight: 600;
@@ -939,9 +899,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 }
 
-/* ── Visualization Panel ─────────────────────────────────────── */
-
-/* Interactive hit area over canvas */
 .canvas-hit-area {
   position: absolute;
   top: 1.5rem;
@@ -952,7 +909,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   cursor: crosshair;
 }
 
-/* Graph tooltip */
 .graph-tooltip {
   position: fixed;
   z-index: 9999;
@@ -1089,8 +1045,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   white-space: nowrap;
 }
 
-
-/* ── Results Panel ───────────────────────────────────────────── */
 .results-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1211,7 +1165,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 }
 
-/* ── Comparison Table ────────────────────────────────────────── */
 .table-wrapper {
   overflow-x: auto;
 }
@@ -1314,7 +1267,6 @@ td .algo-chip {
   box-shadow: 0 0 8px var(--accent-green);
 }
 
-/* ── Footer ──────────────────────────────────────────────────── */
 .app-footer {
   text-align: center;
   padding: 1.6rem 2rem;
@@ -1333,7 +1285,6 @@ td .algo-chip {
   font-weight: 600;
 }
 
-/* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .app-main {
     grid-template-columns: 1fr;
@@ -1467,8 +1418,6 @@ td .algo-chip {
   display: block;
 }
 
-
-/* ── Interaction Area ────────────────────────────────────────── */
 .canvas-hit-area {
   position: absolute;
   top: 1.5rem;
@@ -1479,7 +1428,6 @@ td .algo-chip {
   cursor: crosshair;
 }
 
-/* ── Tooltip ─────────────────────────────────────────────────── */
 .graph-tooltip {
   position: fixed;
   background: rgba(7, 11, 20, 0.95);
@@ -1494,7 +1442,6 @@ td .algo-chip {
   font-size: 0.75rem;
   line-height: 1.5;
   width: 172px;
-  /* Fixed width for better pivot math */
   z-index: 9999;
   pointer-events: none;
   opacity: 0;
@@ -1554,7 +1501,6 @@ td .algo-chip {
   border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* Light Theme Contrast Overrides for Info Panel */
 [data-theme="light"] .algo-info-title {
   color: #0f172a;
   font-weight: 700;

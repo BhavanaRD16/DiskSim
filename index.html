@@ -16,8 +16,6 @@
 </head>
 
 <body>
-
-  <!-- HEADER -->
   <header class="app-header">
     <div class="header-inner">
       <div class="logo-group">
@@ -60,19 +58,22 @@
     </div>
   </header>
 
-  <!-- MAIN LAYOUT -->
   <main class="app-main">
 
-    <!-- LEFT COLUMN: Input + Algorithm Info -->
     <aside class="sidebar">
 
-      <!-- INPUT PANEL -->
       <section class="card" id="input-panel">
         <div class="card-header">
           <span class="card-icon">⚙</span>
           <h2>Configuration</h2>
         </div>
         <div class="card-body">
+
+          <div class="form-group" id="disk-size-group">
+            <label for="disk-size">Disk Size (cylinders)</label>
+            <input type="number" id="disk-size" placeholder="e.g. 200" min="1" />
+            <span class="hint">Total number of cylinders (e.g., 200 means 0 to 199)</span>
+          </div>
 
           <div class="form-group">
             <label for="request-queue">Request Queue</label>
@@ -83,12 +84,6 @@
           <div class="form-group">
             <label for="head-position">Initial Head Position</label>
             <input type="number" id="head-position" placeholder="e.g. 53" min="0" />
-          </div>
-
-          <div class="form-group" id="disk-size-group">
-            <label for="disk-size">Disk Size (cylinders)</label>
-            <input type="number" id="disk-size" placeholder="e.g. 200" min="1" />
-            <span class="hint">Used only for SCAN and C-SCAN</span>
           </div>
 
           <div class="form-group" id="direction-group">
@@ -116,6 +111,7 @@
                 <option value="scan">SCAN — Elevator Algorithm</option>
                 <option value="cscan">C-SCAN — Circular SCAN</option>
                 <option value="look">LOOK</option>
+                <option value="clook">C-LOOK — Circular LOOK</option>
               </select>
               <span class="select-arrow">▾</span>
             </div>
@@ -144,7 +140,7 @@
         </div>
       </section>
 
-      <!-- ALGORITHM INFO CARD -->
+
       <section class="card" id="algo-info-card">
         <div class="card-header">
           <span class="card-icon">ℹ</span>
@@ -157,10 +153,10 @@
 
     </aside>
 
-    <!-- RIGHT COLUMN: Visualization + Results + Comparison -->
+  
     <div class="content-area">
 
-      <!-- VISUALIZATION PANEL -->
+
       <section class="card" id="viz-panel">
         <div class="card-header">
           <span class="card-icon">◈</span>
@@ -183,7 +179,6 @@
         </div>
       </section>
 
-      <!-- RESULTS PANEL -->
       <section class="card" id="results-panel" style="display:none;">
         <div class="card-header">
           <span class="card-icon">📊</span>
@@ -212,7 +207,6 @@
         </div>
       </section>
 
-      <!-- COMPARISON TABLE -->
       <section class="card" id="comparison-panel">
         <div class="card-header">
           <span class="card-icon">⬡</span>
@@ -226,7 +220,7 @@
                 <tr>
                   <th>Algorithm</th>
                   <th>Total Seek Time</th>
-                  <th>Status</th>
+                  <th>Performance</th>
                 </tr>
               </thead>
               <tbody id="comparison-tbody">

@@ -1,11 +1,5 @@
-/* ============================================================
-   DiskSim – script.js
-   HDD Scheduling Simulator – Algorithms + UI + Canvas Animation
-   ============================================================ */
-
 'use strict';
 
-// ── DOM refs ──────────────────────────────────────────────────
 const requestQueueInput = document.getElementById('request-queue');
 const headPositionInput = document.getElementById('head-position');
 const diskSizeInput = document.getElementById('disk-size');
@@ -34,13 +28,13 @@ const highlightCanvas = document.getElementById('highlight-canvas');
 const hCtx = highlightCanvas.getContext('2d');
 const tooltipEl = document.getElementById('graph-tooltip');
 
-// ── State ─────────────────────────────────────────────────────
-let comparisonData = {};   // { fcfs: {name, seek}, sstf: {...}, ... }
-let animationRunning = false;
-let drawnPoints = [];   // [{x, y, cylinder, step, fromCyl, toCyl}]
-let hitArea = null; // dynamic div for mouse/touch
 
-// ── Algorithm Metadata ────────────────────────────────────────
+let comparisonData = {};   
+let animationRunning = false;
+let drawnPoints = [];  
+let hitArea = null; 
+
+
 const ALGO_INFO = {
   fcfs: {
     label: 'First Come First Serve (FCFS)',
@@ -117,9 +111,24 @@ const ALGO_INFO = {
       'Performance depends on incoming request distribution',
     ],
   },
+  clook: {
+    label: 'C-LOOK (Circular LOOK)',
+    subtitle: 'Circular variant of LOOK with uni-directional movement.',
+    description: `C-LOOK is a circular version of the LOOK algorithm. The disk head moves in one direction, servicing all requests in that direction until there are no more requests ahead. It then jumps to the furthest request in the opposite direction and continues servicing in the same direction. This avoids unnecessary movement to disk boundaries while maintaining a circular pattern.`,
+    advantages: [
+      'Avoids unnecessary travel to disk boundaries',
+      'More efficient than C-SCAN due to shorter jumps',
+      'Uni-directional movement reduces mechanical stress',
+      'Better performance than LOOK in some scenarios',
+    ],
+    limitations: [
+      'May have longer jumps than LOOK',
+      'Complexity in implementation',
+      'Direction-dependent performance',
+    ],
+  },
 };
 
-// ── Algorithm Info Panel ──────────────────────────────────────
 function renderAlgoInfo(algoKey) {
   const info = ALGO_INFO[algoKey];
   if (!info) return;
@@ -142,16 +151,14 @@ function renderAlgoInfo(algoKey) {
   `;
 }
 
-// ── Dynamic UI Visibility ─────────────────────────────────────
 function updateUIVisibility(algoKey) {
-  const showDiskSize = ['scan', 'cscan'].includes(algoKey);
-  const showDirection = ['scan', 'cscan', 'look'].includes(algoKey);
+  const showDiskSize = true; // Always show disk size for proper scaling
+  const showDirection = ['scan', 'cscan', 'look', 'clook'].includes(algoKey);
 
   diskSizeGroup.classList.toggle('hidden', !showDiskSize);
   directionGroup.classList.toggle('hidden', !showDirection);
 }
 
-// ── Input Validation ──────────────────────────────────────────
 function parseInputs() {
   const rawQueue = requestQueueInput.value.trim();
   const rawHead = headPositionInput.value.trim();
@@ -161,6 +168,7 @@ function parseInputs() {
 
   if (!rawQueue) throw new Error('Request queue cannot be empty.');
   if (!rawHead) throw new Error('Initial head position is required.');
+  if (!rawDiskSize) throw new Error('Disk size is required.');
 
   const requests = rawQueue.split(/[,\s]+/).filter(s => s.length > 0).map(s => {
     const n = parseInt(s.trim(), 10);
@@ -171,23 +179,18 @@ function parseInputs() {
   const head = parseInt(rawHead, 10);
   if (isNaN(head) || head < 0) throw new Error('Head position must be a non-negative integer.');
 
-  const needsDiskSize = ['scan', 'cscan'].includes(algo);
-  let diskSize = null;
-  if (needsDiskSize) {
-    if (!rawDiskSize) throw new Error('Disk size is required for SCAN and C-SCAN.');
-    diskSize = parseInt(rawDiskSize, 10);
-    if (isNaN(diskSize) || diskSize <= 0) throw new Error('Disk size must be a positive integer.');
-    if (head >= diskSize) throw new Error('Head position must be less than disk size.');
-    for (const r of requests) {
-      if (r < 0 || r >= diskSize)
-        throw new Error(`Request ${r} is out of disk range [0, ${diskSize - 1}].`);
-    }
+  const diskSize = parseInt(rawDiskSize, 10);
+  if (isNaN(diskSize) || diskSize <= 0) throw new Error('Disk size must be a positive integer.');
+
+  if (head >= diskSize) throw new Error('Head position must be less than disk size.');
+  for (const r of requests) {
+    if (r < 0 || r >= diskSize)
+      throw new Error(`Request ${r} is out of disk range [0, ${diskSize - 1}].`);
   }
 
   return { requests, head, diskSize, algo, direction };
 }
 
-// ── Algorithms ────────────────────────────────────────────────
 
 function fcfs(head, requests) {
   const order = [head, ...requests];
@@ -268,21 +271,20 @@ function cscan(head, requests, diskSize, direction) {
   if (direction === 'right') {
     traverse(right);
     if (diskSize !== null) {
-      // go to end then jump to 0
       seek += Math.abs(current - (diskSize - 1));
       current = diskSize - 1;
       order.push(current);
-      seek += diskSize - 1; // jump to 0
+      seek += diskSize - 1; 
       current = 0;
       order.push(0);
     }
-    traverse(left.slice().reverse()); // serve left in ascending order
+    traverse(left.slice().reverse()); 
   } else {
     traverse(left);
-    seek += current; // go to 0
+    seek += current; 
     current = 0;
     order.push(0);
-    seek += diskSize - 1; // jump to end
+    seek += diskSize - 1; 
     current = diskSize - 1;
     order.push(current);
     traverse(right.slice().reverse());
@@ -315,6 +317,45 @@ function look(head, requests, direction) {
   return { order, seek };
 }
 
+function clook(head, requests, direction) {
+  const sorted = [...requests].sort((a, b) => a - b);
+  const left = sorted.filter(r => r < head).reverse();
+  const right = sorted.filter(r => r >= head);
+  const order = [head];
+  let seek = 0, current = head;
+
+  const traverse = (list) => {
+    for (const pos of list) {
+      seek += Math.abs(current - pos);
+      current = pos;
+      order.push(current);
+    }
+  };
+
+  if (direction === 'right') {
+    traverse(right);
+    if (left.length > 0) {
+      const maxLeft = Math.max(...left);
+      seek += Math.abs(current - maxLeft);
+      current = maxLeft;
+      order.push(current);
+      const remainingLeft = left.filter(r => r < maxLeft).reverse();
+      traverse(remainingLeft);
+    }
+  } else {
+    traverse(left);
+    if (right.length > 0) {
+      const minRight = Math.min(...right);
+      seek += Math.abs(current - minRight);
+      current = minRight;
+      order.push(current);
+      const remainingRight = right.filter(r => r > minRight);
+      traverse(remainingRight);
+    }
+  }
+  return { order, seek };
+}
+
 function runAlgorithm(algo, head, requests, diskSize, direction) {
   switch (algo) {
     case 'fcfs': return fcfs(head, requests);
@@ -322,11 +363,39 @@ function runAlgorithm(algo, head, requests, diskSize, direction) {
     case 'scan': return scan(head, requests, diskSize, direction);
     case 'cscan': return cscan(head, requests, diskSize, direction);
     case 'look': return look(head, requests, direction);
+    case 'clook': return clook(head, requests, direction);
     default: throw new Error('Unknown algorithm selected.');
   }
 }
 
-// ── Canvas Helpers ────────────────────────────────────────────
+function updateComparisonTable() {
+  const tbody = document.getElementById('comparison-tbody');
+  const algos = ['fcfs', 'sstf', 'scan', 'cscan', 'look', 'clook'];
+  const seeks = algos.map(algo => comparisonData[algo] ? comparisonData[algo].seek : Infinity);
+  const allComputed = algos.every(algo => comparisonData[algo]);
+  const minSeek = allComputed ? Math.min(...seeks) : Infinity;
+
+  const rows = algos.map(algo => {
+    const data = comparisonData[algo];
+    if (data) {
+      const isBest = allComputed && data.seek === minSeek;
+      return `<tr${isBest ? ' class="best-row"' : ''}>
+        <td>${data.name}</td>
+        <td>${data.seek}</td>
+        <td>${isBest ? '<span class="best-badge">★ Best</span>' : ''}</td>
+      </tr>`;
+    } else {
+      const name = ALGO_INFO[algo] ? ALGO_INFO[algo].label.split(' (')[0] : algo.toUpperCase();
+      return `<tr>
+        <td>${name}</td>
+        <td>—</td>
+        <td></td>
+      </tr>`;
+    }
+  }).join('');
+  tbody.innerHTML = rows;
+}
+
 const CANVAS_H = 520;
 const PADDING_X = 60;
 const PADDING_Y = 55;
@@ -362,7 +431,6 @@ function drawBackground(order, minC, maxC, totalSteps) {
   const graphW = canvas.width - PADDING_X * 2;
   const graphH = AXIS_Y - GRAPH_TOP_Y;
 
-  // 1. Solid background (dynamic to theme)
   const style = getComputedStyle(document.documentElement);
   ctx.fillStyle = style.getPropertyValue('--bg-base').trim() || '#070b14';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -373,27 +441,23 @@ function drawBackground(order, minC, maxC, totalSteps) {
   ctx.fillStyle = glow;
   ctx.fillRect(PADDING_X, GRAPH_TOP_Y, canvas.width - PADDING_X * 2, AXIS_Y - GRAPH_TOP_Y);
 
-  // 2. Horizontal step grid lines
   ctx.lineWidth = 1;
   ctx.textAlign = 'right';
   for (let s = 0; s <= totalSteps; s++) {
     const y = getY(s, totalSteps);
-    // Grid line
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)'; // faint cyan for step divisions
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.moveTo(PADDING_X, y);
     ctx.lineTo(canvas.width - PADDING_X, y);
     ctx.stroke();
 
-    // Step label
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.9)'; // lighter gray
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
     ctx.font = '11px JetBrains Mono, monospace';
     ctx.fillText(`${s}`, PADDING_X - 12, y + 4);
   }
-  ctx.setLineDash([]); // reset
+  ctx.setLineDash([]); 
 
-  // 3. Vertical cylinder bounding / reference lines
   const range = maxC - minC;
   let gridCount = 10;
   if (range > 0 && range < 10) gridCount = range;
@@ -402,7 +466,7 @@ function drawBackground(order, minC, maxC, totalSteps) {
     const x = PADDING_X + (i / gridCount) * graphW;
     const isBoundary = (i === 0 || i === gridCount);
 
-    // Vertical line
+
     ctx.strokeStyle = isBoundary ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.1)';
     ctx.lineWidth = isBoundary ? 1.5 : 1;
     ctx.beginPath();
@@ -410,7 +474,7 @@ function drawBackground(order, minC, maxC, totalSteps) {
     ctx.lineTo(x, AXIS_Y + 20);
     ctx.stroke();
 
-    // Bottom label
+  
     const val = Math.round(minC + (i / gridCount) * (maxC - minC));
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     ctx.fillStyle = isBoundary ? '#3b82f6' : (isLight ? 'rgba(71, 85, 105, 0.6)' : 'rgba(148, 163, 184, 0.7)');
@@ -420,7 +484,6 @@ function drawBackground(order, minC, maxC, totalSteps) {
 
   }
 
-  // 4. Main Horizontal X-Axis Line
   ctx.strokeStyle = '#3b82f6';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -428,15 +491,11 @@ function drawBackground(order, minC, maxC, totalSteps) {
   ctx.lineTo(canvas.width - PADDING_X + 5, AXIS_Y + 20);
   ctx.stroke();
 
-
-
-  // X-axis label
   ctx.fillStyle = '#94a3b8';
   ctx.font = '500 12px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('Cylinder Number', canvas.width / 2, AXIS_Y + 54);
 
-  // Y-axis label
   ctx.save();
   ctx.translate(16, CANVAS_H / 2);
   ctx.rotate(-Math.PI / 2);
@@ -458,10 +517,9 @@ function drawSegment(ctx, x1, y1, x2, y2, progress) {
   return { x: xi, y: yi };
 }
 
-// ── Speed Slider → delay (ms) ──────────────────────────────────
+
 function getDelay() {
-  const val = parseInt(speedSlider.value, 10); // 1 (slow) → 10 (fast)
-  // map 1→800ms, 10→60ms
+  const val = parseInt(speedSlider.value, 10); 
   return Math.round(800 - (val - 1) * (800 - 60) / 9);
 }
 
@@ -469,14 +527,11 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ── Start-point pop animation ──────────────────────────────
 async function showStartAnimation(x, y, cylinder) {
   const maxR = 10;
-  // Phase 1: grow from 0 → maxR with glow (on highlight canvas)
   for (let r = 0; r <= maxR; r++) {
     hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
     const alpha = r / maxR;
-    // outer glow ring
     hCtx.shadowColor = '#a855f7';
     hCtx.shadowBlur = 20;
     hCtx.strokeStyle = `rgba(168,85,247,${alpha})`;
@@ -484,7 +539,6 @@ async function showStartAnimation(x, y, cylinder) {
     hCtx.beginPath();
     hCtx.arc(x, y, Math.max(r + 4, 5), 0, Math.PI * 2);
     hCtx.stroke();
-    // filled dot
     hCtx.shadowBlur = 16;
     hCtx.fillStyle = `rgba(168,85,247,${alpha})`;
     hCtx.beginPath();
@@ -494,17 +548,14 @@ async function showStartAnimation(x, y, cylinder) {
     await sleep(18);
     if (!animationRunning) return;
   }
-  // Phase 2: pulse ring expansion
   for (let r = maxR; r <= maxR + 18; r += 2) {
     hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
     const alpha = 1 - (r - maxR) / 18;
-    // pulse ring
     hCtx.strokeStyle = `rgba(168,85,247,${alpha})`;
     hCtx.lineWidth = 2;
     hCtx.beginPath();
     hCtx.arc(x, y, r, 0, Math.PI * 2);
     hCtx.stroke();
-    // stable center dot
     hCtx.shadowColor = '#a855f7'; hCtx.shadowBlur = 14;
     hCtx.fillStyle = '#a855f7';
     hCtx.beginPath();
@@ -514,7 +565,7 @@ async function showStartAnimation(x, y, cylinder) {
     await sleep(20);
     if (!animationRunning) return;
   }
-  // Phase 3: stamp "START" label on main canvas, draw permanent dot
+  
   ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 14;
   ctx.fillStyle = '#a855f7';
   ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
@@ -525,13 +576,10 @@ async function showStartAnimation(x, y, cylinder) {
   ctx.font = 'bold 600 10px Poppins, Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('START', x, y - 16);
-  // clear highlight canvas for upcoming path
   hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
-  // pause before path starts
   await sleep(480);
 }
 
-// ── Main Animation ──────────────────────────────────────────
 async function animate(order, algoName, seekTotal, diskSize = null) {
   animationRunning = true;
   drawnPoints = [];
@@ -539,7 +587,6 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
   movementTicker.style.display = 'flex';
 
   resizeCanvas();
-  // Standardize graph scale from 0 to max request or diskSize boundary
   const minC = 0;
   const orderMax = Math.max(...order);
   const maxC = diskSize ? diskSize - 1 : Math.max(1, orderMax);
@@ -547,11 +594,9 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
 
   let cumulativeSeek = 0;
 
-  // Draw static background once
   clearCanvas();
   drawBackground(order, minC, maxC, totalSteps);
 
-  // Faint tick marks for every request on the axis
   for (const pos of order) {
     const x = getX(pos, minC, maxC);
     ctx.fillStyle = 'rgba(59,130,246,0.15)';
@@ -560,16 +605,13 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
     ctx.fill();
   }
 
-  // ── Head initialization pop animation ──────────────────
   const startX = getX(order[0], minC, maxC);
   const startY = getY(0, totalSteps);
   await showStartAnimation(startX, startY, order[0]);
   if (!animationRunning) return;
 
-  // Record start point
   drawnPoints.push({ x: startX, y: startY, cylinder: order[0], step: 0, fromCyl: order[0], toCyl: order[0] });
 
-  // ── Animate each segment ──────────────────────────────
   for (let step = 0; step < totalSteps; step++) {
     const from = order[step];
     const to = order[step + 1];
@@ -584,7 +626,7 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
     const isLast = step === totalSteps - 1;
     const segColor = isFirst ? '#a855f7' : isLast ? '#22c55e' : '#3b82f6';
 
-    // waypoint dot at origin of this segment
+
     if (step > 0) {
       ctx.fillStyle = 'rgba(139,148,158,0.55)';
       ctx.beginPath();
@@ -630,7 +672,7 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
           ctx.beginPath();
           ctx.arc(curX, curY, 8, 0, Math.PI * 2);
           ctx.stroke();
-          // END label
+        
           const isLight = document.documentElement.getAttribute('data-theme') === 'light';
           ctx.fillStyle = isLight ? '#0f172a' : '#fff';
           ctx.font = 'bold 10px Poppins, Inter, sans-serif';
@@ -644,7 +686,7 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
       if (!animationRunning) return;
     }
 
-    // Record this endpoint for tooltip interaction
+    
     drawnPoints.push({
       x: x2, y: y2,
       cylinder: to,
@@ -666,16 +708,12 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
   tickerText.innerHTML = `<span style="color:var(--accent-green)">✔ Simulation Complete</span> <span style="opacity:0.5;margin:0 8px">|</span> Total Seek Time: <span style="color:var(--text-primary);font-weight:600">${cumulativeSeek}</span>`;
   animationRunning = false;
 
-
-
-  // Enable interactive tooltips now that all points are recorded
   setupCanvasInteraction();
 }
 
-// ── Interaction: nearest-point detection ─────────────────────
 
 function findNearestPoint(mx, my) {
-  const RADIUS = 22; // px hit radius
+  const RADIUS = 22; 
   let best = null, bestDist = RADIUS;
   for (const pt of drawnPoints) {
     const d = Math.hypot(pt.x - mx, pt.y - my);
@@ -731,7 +769,6 @@ function showTooltip(pt) {
   `;
 
 
-  // Position: anchor rigidly to the point coordinates
   const rect = canvas.getBoundingClientRect();
   const scaleX = rect.width / canvas.width;
   const scaleY = rect.height / canvas.height;
@@ -739,30 +776,26 @@ function showTooltip(pt) {
   const viewportX = rect.left + pt.x * scaleX;
   const viewportY = rect.top + pt.y * scaleY;
 
-  // Use natural height to properly elevate it fully above the dot
   const TH = tooltipEl.offsetHeight || 130;
   const TW = 172;
 
-  // Pivot check: if node is in the right-most 30% of the screen, 
-  // shift the tooltip to the left of the dot.
   const screenPct = viewportX / window.innerWidth;
   let tx;
 
   if (screenPct > 0.7) {
-    tx = viewportX - TW - 20; // Pivot left
+    tx = viewportX - TW - 20; 
   } else if (screenPct < 0.3) {
-    tx = viewportX + 20;      // Pivot right
+    tx = viewportX + 20;     
   } else {
-    tx = viewportX - TW / 2; // Center
+    tx = viewportX - TW / 2; 
   }
 
-  let ty = viewportY - TH - 16; // Above the point
+  let ty = viewportY - TH - 16; 
 
-  // Safety bounds
+ 
   if (tx < 12) tx = 12;
   if (tx + TW > window.innerWidth - 12) tx = window.innerWidth - TW - 12;
 
-  // If hitting the top of the browser, flip it to show below the point
   if (ty < 12) {
     ty = viewportY + 24;
   }
@@ -779,7 +812,6 @@ function hideTooltip() {
 }
 
 function setupCanvasInteraction() {
-  // Remove old hit area if re-running
   if (hitArea) hitArea.remove();
   hitArea = document.createElement('div');
   hitArea.className = 'canvas-hit-area';
@@ -822,7 +854,6 @@ function setupCanvasInteraction() {
   hitArea.addEventListener('touchend', hideTooltip);
 }
 
-// ── Execution Order Display ───────────────────────────────────
 function renderExecOrder(order) {
   execSequence.innerHTML = '';
   order.forEach((pos, i) => {
@@ -841,45 +872,12 @@ function renderExecOrder(order) {
   });
 }
 
-// ── Comparison Table ──────────────────────────────────────────
-function updateComparisonTable() {
-  if (Object.keys(comparisonData).length === 0) {
-    comparisonTbody.innerHTML = '<tr class="empty-row"><td colspan="3">No results yet. Run a simulation to begin.</td></tr>';
-    return;
-  }
 
-  // find min
-  const seeks = Object.values(comparisonData).map(d => d.seek);
-  const minSeek = Math.min(...seeks);
-
-  comparisonTbody.innerHTML = '';
-  const algoOrder = ['fcfs', 'sstf', 'look', 'scan', 'cscan'];
-  for (const key of algoOrder) {
-    if (!comparisonData[key]) continue;
-    const { name, seek } = comparisonData[key];
-    const isBest = seek === minSeek;
-
-    const tr = document.createElement('tr');
-    if (isBest) tr.classList.add('best-row');
-    tr.innerHTML = `
-      <td>
-        <span class="algo-chip">${name}</span>
-        ${isBest ? '<span class="best-badge">★ Best</span>' : ''}
-      </td>
-      <td>${seek}</td>
-      <td><span class="status-dot done"></span>Completed</td>
-    `;
-    comparisonTbody.appendChild(tr);
-  }
-}
-
-// ── Status Badge ──────────────────────────────────────────────
 function setStatus(state) {
   simStatus.textContent = state === 'running' ? 'Running' : state === 'done' ? 'Complete' : 'Ready';
   simStatus.className = `status-badge${state !== 'ready' ? ' ' + state : ''}`;
 }
 
-// ── Error Display ─────────────────────────────────────────────
 function showError(msg) {
   errorBox.textContent = '⚠ ' + msg;
   errorBox.style.display = 'block';
@@ -889,7 +887,7 @@ function clearError() {
   errorBox.style.display = 'none';
 }
 
-// ── Run Simulation ────────────────────────────────────────────
+
 async function runSimulation() {
   if (animationRunning) return;
   clearError();
@@ -914,36 +912,31 @@ async function runSimulation() {
   const { order, seek } = result;
   const algoName = ALGO_INFO[algo].label.split(' (')[0];
 
-  // Store for comparison
+ 
   comparisonData[algo] = { name: algoName, seek };
   updateComparisonTable();
 
-  // Show results panel
+
   resultsPanel.style.display = '';
   resAlgoName.textContent = algoName;
   resSeekTime.textContent = 0;
   resReqCount.textContent = requests.length;
   renderExecOrder(order);
 
-  // Show movement ticker
+  
   if (movementTicker) movementTicker.style.display = 'flex';
 
 
-  // Hide placeholder, show canvas
   canvasPlaceholder.classList.add('hidden');
 
-  // Run animation
   runBtn.disabled = true;
   runBtn.textContent = '⏳ Simulating…';
   await animate(order, algoName, seek, diskSize);
   runBtn.disabled = false;
   runBtn.innerHTML = '<span>▶</span> Run Simulation';
-
-  // Final display
   resSeekTime.textContent = seek;
 }
 
-// ── Reset ─────────────────────────────────────────────────────
 function resetAll() {
   animationRunning = false;
   drawnPoints = [];
@@ -962,26 +955,25 @@ function resetAll() {
   seekLive.textContent = 'Seek: 0';
 }
 
-// ── Speed Slider live update ───────────────────────────────────
 speedSlider.addEventListener('input', () => {
   const pct = ((speedSlider.value - 1) / 9) * 100;
   speedSlider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--border) ${pct}%)`;
 });
-// initialize
+
 speedSlider.dispatchEvent(new Event('input'));
 
-// ── Algorithm select listener ─────────────────────────────────
+
 algorithmSelect.addEventListener('change', () => {
   const algo = algorithmSelect.value;
   renderAlgoInfo(algo);
   updateUIVisibility(algo);
 });
 
-// ── Buttons ───────────────────────────────────────────────────
+
 runBtn.addEventListener('click', runSimulation);
 resetBtn.addEventListener('click', resetAll);
 
-// ── Window resize → re-draw canvas ───────────────────────────
+
 let resizeTimeout;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimeout);
@@ -990,7 +982,7 @@ window.addEventListener('resize', () => {
   }, 200);
 });
 
-// ── Theme Toggle ──────────────────────────────────────────────
+
 const themeToggleBtn = document.getElementById('theme-toggle');
 let currentTheme = localStorage.getItem('theme') || 'dark';
 document.documentElement.setAttribute('data-theme', currentTheme);
@@ -1001,7 +993,6 @@ if (themeToggleBtn) {
     document.documentElement.setAttribute('data-theme', currentTheme);
     localStorage.setItem('theme', currentTheme);
 
-    // Redraw graph lines to instantly match theme background if a simulation exists
     if (!animationRunning && drawnPoints.length > 0) {
       const order = drawnPoints.map(p => p.cylinder);
       order.unshift(drawnPoints[0].fromCyl);
@@ -1014,7 +1005,6 @@ if (themeToggleBtn) {
       clearCanvas();
       drawBackground(order, minC, maxC, drawnPoints.length - 1);
 
-      // Re-draw segments and dots
       ctx.lineWidth = 2.5;
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
@@ -1039,21 +1029,19 @@ if (themeToggleBtn) {
         }
       }
 
-      // Re-draw start dot
       const start = drawnPoints[0];
       ctx.fillStyle = '#a855f7'; ctx.beginPath(); ctx.arc(start.x, start.y, 9, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = (currentTheme === 'light') ? '#0f172a' : '#fff';
       ctx.font = 'bold 600 10px Poppins, Inter, sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('START', start.x, start.y - 16);
     } else if (!animationRunning) {
-      // Just redraw empty background if no simulation ran
+      
       clearCanvas();
       drawBackground([], 0, 100, 10);
     }
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────
 (function init() {
   renderAlgoInfo(algorithmSelect.value);
   updateUIVisibility(algorithmSelect.value);
