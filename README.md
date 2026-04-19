@@ -3,6 +3,7 @@
 An interactive web application to visualize and compare disk scheduling algorithms with real-time animation and modern UI.
 
 🚀 Features
+
 📌 Supports multiple disk scheduling algorithms:
   FCFS (First Come First Served)
   SSTF (Shortest Seek Time First)
