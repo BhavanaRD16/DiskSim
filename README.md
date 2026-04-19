@@ -71,9 +71,6 @@ https://disksim.onrender.com
 * CSS
 * JavaScript
 
-📌 Purpose
-This project was developed as an academic mini project to demonstrate disk scheduling concepts in Operating Systems through interactive visualization and simulation.
-
 💡 Key Learning
 * Understanding of disk scheduling algorithms
 * Visualization of head movement and seek time optimization
