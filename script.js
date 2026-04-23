@@ -957,7 +957,7 @@ function resetAll() {
 
 speedSlider.addEventListener('input', () => {
   const pct = ((speedSlider.value - 1) / 9) * 100;
-  speedSlider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+  speedSlider.style.background = `linear-gradient(to right, var(--accent-blue) ${pct}%, rgba(128, 128, 128, 0.3) ${pct}%)`;
 });
 
 speedSlider.dispatchEvent(new Event('input'));
@@ -973,6 +973,39 @@ algorithmSelect.addEventListener('change', () => {
 runBtn.addEventListener('click', runSimulation);
 resetBtn.addEventListener('click', resetAll);
 
+const compareAllBtn = document.getElementById('compare-all-btn');
+if (compareAllBtn) {
+  compareAllBtn.addEventListener('click', () => {
+    clearError();
+    let params;
+    try {
+      params = parseInputs();
+    } catch (e) {
+      showError("Please provide valid configuration to compare algorithms.");
+      return;
+    }
+    
+    const { requests, head, diskSize, direction } = params;
+    const algos = ['fcfs', 'sstf', 'scan', 'cscan', 'look', 'clook'];
+    
+    // Run all algorithms silently to gather comparison data
+    algos.forEach(algo => {
+      try {
+        const result = runAlgorithm(algo, head, requests, diskSize, direction);
+        comparisonData[algo] = { name: ALGO_INFO[algo].label.split(' (')[0], seek: result.seek };
+      } catch (e) {
+        // Silently skip if one algorithm fails to calculate
+      }
+    });
+    
+    updateComparisonTable();
+    
+    // Hide the button and show the table
+    document.getElementById('compare-btn-wrapper').style.display = 'none';
+    document.getElementById('comparison-table-wrapper').style.display = 'block';
+  });
+}
+
 
 let resizeTimeout;
 window.addEventListener('resize', () => {
@@ -984,7 +1017,7 @@ window.addEventListener('resize', () => {
 
 
 const themeToggleBtn = document.getElementById('theme-toggle');
-let currentTheme = localStorage.getItem('theme') || 'dark';
+let currentTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', currentTheme);
 
 if (themeToggleBtn) {

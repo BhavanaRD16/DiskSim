@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 
 <head>
   <meta charset="UTF-8" />
@@ -33,9 +33,14 @@
           <span>HDD Scheduling Simulator</span>
         </div>
       </div>
+      <div class="implementers-badge">
+        <span>Implemented by <strong>Bhavana R</strong>, <strong>Bharanidharan D</strong>, <strong>Anbu Selvan M</strong></span>
+      </div>
       <div class="header-badge">
         <span class="badge-dot"></span>
         <span>OS &bull;  Algorithm Visualizer</span>
+      </div>
+      <div class="header-controls">
         <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
           <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -175,13 +180,12 @@
         <div class="movement-ticker" id="movement-ticker" style="display:none;">
           <span class="ticker-label">Current Move</span>
           <span class="ticker-value" id="ticker-text">—</span>
-          <span class="seek-live" id="seek-live">Seek: 0</span>
+          <span class="seek-live" id="seek-live" style="display: none;">Seek: 0</span>
         </div>
       </section>
 
       <section class="card" id="results-panel" style="display:none;">
         <div class="card-header">
-          <span class="card-icon">📊</span>
           <h2>Simulation Results</h2>
         </div>
         <div class="card-body">
@@ -211,16 +215,18 @@
         <div class="card-header">
           <span class="card-icon">⬡</span>
           <h2>Algorithm Comparison</h2>
-          <span class="header-note">Run each algorithm to populate</span>
         </div>
         <div class="card-body">
-          <div class="table-wrapper">
+          <div id="compare-btn-wrapper" style="text-align: center; margin-bottom: 1rem;">
+            <button id="compare-all-btn" class="btn btn-primary" style="display: inline-flex; width: auto; padding: 0.8rem 1.5rem;">📊 Click to View Algorithm Comparison</button>
+          </div>
+          <div class="table-wrapper" id="comparison-table-wrapper" style="display: none;">
             <table id="comparison-table">
               <thead>
                 <tr>
                   <th>Algorithm</th>
                   <th>Total Seek Time</th>
-                  <th>Performance</th>
+                  <th>Best</th>
                 </tr>
               </thead>
               <tbody id="comparison-tbody">
