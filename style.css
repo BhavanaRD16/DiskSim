@@ -118,7 +118,7 @@ body {
 }
 
 .header-inner {
-  max-width: 1440px;
+  max-width: 100%;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -285,7 +285,7 @@ body {
 }
 
 .app-main {
-  max-width: 1440px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 2rem 2.5rem 0.5rem;
   display: grid;

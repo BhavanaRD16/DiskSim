@@ -1017,7 +1017,7 @@ window.addEventListener('resize', () => {
 
 
 const themeToggleBtn = document.getElementById('theme-toggle');
-let currentTheme = localStorage.getItem('theme') || 'light';
+let currentTheme = 'light';
 document.documentElement.setAttribute('data-theme', currentTheme);
 
 if (themeToggleBtn) {
