@@ -576,6 +576,10 @@ async function showStartAnimation(x, y, cylinder) {
   ctx.font = 'bold 600 10px Poppins, Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('START', x, y - 16);
+
+  // Draw cylinder number label for the start node — placed to the right to avoid hiding 'START' text above
+  drawNodeLabel(ctx, x, y, cylinder, '#a855f7', isLight, 9, 'right');
+
   hCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
   await sleep(480);
 }
@@ -665,6 +669,7 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
         ctx.arc(curX, curY, isLast ? 8 : 5, 0, Math.PI * 2);
         ctx.fill();
 
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
         if (isLast) {
           ctx.strokeStyle = 'rgba(255,255,255,.7)';
@@ -673,13 +678,15 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
           ctx.arc(curX, curY, 8, 0, Math.PI * 2);
           ctx.stroke();
         
-          const isLight = document.documentElement.getAttribute('data-theme') === 'light';
           ctx.fillStyle = isLight ? '#0f172a' : '#fff';
           ctx.font = 'bold 10px Poppins, Inter, sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('END', curX, curY - 16);
         }
         ctx.shadowColor = 'transparent';
+
+        // Draw the cylinder number label — right side for END node to avoid hiding the 'END' text above
+        drawNodeLabel(ctx, curX, curY, to, segColor, isLight, isLast ? 8 : 5, isLast ? 'right' : 'above');
       }
 
       await sleep(delay / subSteps);
@@ -711,6 +718,46 @@ async function animate(order, algoName, seekTotal, diskSize = null) {
   setupCanvasInteraction();
 }
 
+
+/**
+ * Draws a small cylinder number label near a node on the canvas.
+ * The label is rendered to the right of the node with a subtle background pill.
+ */
+function drawNodeLabel(ctx, x, y, cylinder, color, isLight, nodeRadius = 5, position = 'above') {
+  const label = String(cylinder);
+  const fontSize = 13;
+  ctx.save();
+  ctx.font = `bold ${fontSize}px JetBrains Mono, monospace`;
+  ctx.textAlign = 'center';
+
+  const textW = ctx.measureText(label).width;
+  const padX = 5, padY = 3;
+  const bgW = textW + padX * 2;
+  const bgH = fontSize + padY * 2;
+
+  // Position: above the node by default; to the right for start node
+  const lx = position === 'right' ? x + nodeRadius + 6 : x - bgW / 2;
+  const ly = position === 'right' ? y - bgH / 2 : y - nodeRadius - bgH - 6;
+
+  // Pill background with slight border
+  ctx.fillStyle = isLight ? 'rgba(255,255,255,0.90)' : 'rgba(10,18,40,0.88)';
+  ctx.beginPath();
+  ctx.roundRect(lx, ly, bgW, bgH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(lx, ly, bgW, bgH, 4);
+  ctx.stroke();
+
+  // Label text
+  ctx.fillStyle = color;
+  const textX = position === 'right' ? lx + padX + textW / 2 : x;
+  ctx.fillText(label, textX, ly + padY + fontSize - 1);
+
+  ctx.restore();
+}
 
 function findNearestPoint(mx, my) {
   const RADIUS = 22; 
